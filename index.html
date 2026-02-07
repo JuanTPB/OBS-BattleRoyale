@@ -340,18 +340,22 @@
 
         // Ejecutar comando con Enter
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Overlay iniciado');
+            console.log('🚀 Overlay iniciado - v2.0');
             console.log(`📺 Canal: ${CONFIG.channel}`);
             
             initGames();
             renderGames();
 
             // Enter en el input ejecuta el comando
-            document.getElementById('commandInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    processCommand();
-                }
-            });
+            const cmdInput = document.getElementById('commandInput');
+            if (cmdInput) {
+                cmdInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        processCommand();
+                    }
+                });
+                cmdInput.focus();
+            }
         });
     </script>
 </body>
