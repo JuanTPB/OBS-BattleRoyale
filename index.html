@@ -268,27 +268,22 @@
                     const isLeadMod = userLower === 'juantpb_rize';
                     const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
                     
-                    console.log(`💬 ${user} [${roleLabel}] (${userLower}): ${message}`);
-                    console.log(`   mod=${badges.moderator} | broadcaster=${flags.broadcaster} | en whitelist=${state.renrizeModeratos.has(userLower)}`);
-                    
                     // Detectar y cachear mods de renrize
                     if (badges.moderator || flags.broadcaster) {
-                        state.renrizeModeratos.add(userLower);
-                        if (isLeadMod) {
-                            console.log(`👑 LEAD MODERATOR detectado y agregado: ${user}`);
-                        } else {
-                            console.log(`✅ Moderador detectado y agregado: ${user}`);
+                        if (!state.renrizeModeratos.has(userLower)) {
+                            state.renrizeModeratos.add(userLower);
+                            if (isLeadMod) {
+                                console.log(`👑 LEAD MODERATOR detectado: ${user}`);
+                            } else {
+                                console.log(`✅ Moderador detectado: ${user}`);
+                            }
                         }
-                        console.log(`📋 Lista de mods autorizados:`, Array.from(state.renrizeModeratos));
                     }
                     
                     // Solo procesar comandos de mods autorizados
                     if (!state.renrizeModeratos.has(userLower)) {
-                        console.log(`🚫 ${user} no está en la whitelist. Mods autorizados: ${Array.from(state.renrizeModeratos).join(', ')}`);
                         return;
                     }
-
-                    console.log(`✅ Comando autorizado de ${user} [${roleLabel}]`);
 
                     // Comando done: !obs juego done
                     const doneRegex = /^!obs\s+(\w+)\s+done$/i;
@@ -297,9 +292,7 @@
                         const gameKey = doneMatch[1].toLowerCase();
                         if (state.games[gameKey]) {
                             markGameCompleted(gameKey);
-                            console.log(`✅ Completado procesado: ${gameKey} (por ${user})`);
-                        } else {
-                            console.log(`❌ Juego no encontrado: ${gameKey}`);
+                            console.log(`✅ [${roleLabel}] ${user}: ${gameKey} done`);
                         }
                         return;
                     }
@@ -315,12 +308,8 @@
                         }
                         if (state.games[gameKey]) {
                             updateGameMatches(gameKey, change);
-                            console.log(`✅ Comando procesado: ${gameKey} ${change > 0 ? '+' : ''}${change} (por ${user})`);
-                        } else {
-                            console.log(`❌ Juego no encontrado: ${gameKey}`);
+                            console.log(`✅ [${roleLabel}] ${user}: ${gameKey} ${change > 0 ? '+' : ''}${change}`);
                         }
-                    } else {
-                        console.log(`❌ Formato de comando incorrecto: ${message}`);
                     }
                 };
 
