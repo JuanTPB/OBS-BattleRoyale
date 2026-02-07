@@ -133,7 +133,7 @@
         const SUPABASE_URL = 'https://soocvzhelrklnvqdjqwo.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_OUan7bLd9sHg-RU77Hn6kQ_YDOAVkH4';
         const { createClient } = window.supabase;
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let isSyncing = false; // Bandera para evitar sincronización infinita
 
         // Configuración de juegos
@@ -215,7 +215,7 @@
             };
             
             try {
-                const { error } = await supabase
+                const { error } = await supabaseClient
                     .from('obs_overlay')
                     .update({ state: data })
                     .eq('id', 1);
@@ -231,7 +231,7 @@
         // Cargar estado desde Supabase
         async function loadState() {
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('obs_overlay')
                     .select('state')
                     .eq('id', 1)
@@ -277,7 +277,7 @@
 
         // Sincronizar cambios desde Supabase en tiempo real
         function setupRealTimeSync() {
-            supabase
+            supabaseClient
                 .channel('obs_overlay')
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'obs_overlay' }, (payload) => {
                     if (isSyncing) return; // Ignorar si es nuestra propia actualización
