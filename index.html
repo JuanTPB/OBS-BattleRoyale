@@ -332,6 +332,9 @@
                 ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
+                    // DEBUG: Log todos los mensajes
+                    console.log(`💬 MENSAJE RECIBIDO: ${user} → ${message}`);
+                    
                     // Solo procesar mensajes que empiezan con !obs
                     if (!message.toLowerCase().startsWith('!obs')) {
                         return;
