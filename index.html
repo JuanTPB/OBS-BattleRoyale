@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Battle Royale Overlay - Twitch</title>
-    <script src="https://unpkg.com/tmi.js@1.8.5/lib/tmi.min.js"></script>
+    <title>Battle Royale Overlay</title>
     <style>
         * {
             margin: 0;
@@ -23,6 +22,68 @@
             right: 20px;
             display: flex;
             gap: 15px;
+        }
+
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 300px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+
+        .control-panel h3 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            font-size: 14px;
+        }
+
+        .command-input {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #00ff00;
+            color: #fff;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+
+        .command-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .command-input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 8px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .btn:hover {
+            background: #00cc00;
+        }
+
+        .status-text {
+            font-size: 12px;
+            color: #00ff00;
+            margin-top: 5px;
         }
 
         .game-item {
@@ -48,7 +109,6 @@
         .game-item.completed .game-counter {
             background: #1fe400;
             color: #ffffff;
-            /* border-color: #00ff88; */
             box-shadow: 0 0 15px rgba(0, 255, 136, 0.9);
             padding: 0 5px;
         }
@@ -66,7 +126,6 @@
             bottom: -8px;
             left: 50%;
             transform: translateX(-50%);
-            /* justify-self: anchor-center; */
             background: rgba(0, 0, 0, 0.9);
             color: #fff;
             font-family: 'Arial Black', sans-serif;
@@ -77,7 +136,6 @@
             text-align: center;
             border: 2px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-            
         }
 
         .game-item.active .game-counter {
@@ -124,37 +182,23 @@
         <!-- Los juegos se generarán dinámicamente -->
     </div>
 
+    <div class="control-panel">
+        <h3>🎮 Panel de Control</h3>
+        <input type="text" class="command-input" id="commandInput" placeholder="Ej: !obs apex +1 o !obs apex done" />
+        <button class="btn" onclick="processCommand()">Ejecutar Comando</button>
+        <div class="status-text" id="statusText">✅ Listo</div>
+    </div>
+
     <script>
         // Configuración de juegos
         const GAMES = {
-            apex: {
-                name: 'Apex Legends',
-                logo: './logos/Apex.png'
-            },
-            warzone: {
-                name: 'Warzone',
-                logo: './logos/Warzone.png'
-            },
-            fortnite: {
-                name: 'Fortnite',
-                logo: './logos/Fortnite.png'
-            },
-            zerobuild: {
-                name: 'Fortnite: Zero Build',
-                logo: './logos/ZeroBuild.png'
-            },
-            pubg: {
-                name: 'PUBG',
-                logo: './logos/PUBG.png'
-            },
-            battlefield: {
-                name: 'Battlefield',
-                logo: './logos/Battlefield.png'
-            },
-            freefire: {
-                name: 'Free Fire',
-                logo: './logos/FreeFire.png'
-            }
+            apex: { name: 'Apex Legends', logo: './logos/Apex.png' },
+            warzone: { name: 'Warzone', logo: './logos/Warzone.png' },
+            fortnite: { name: 'Fortnite', logo: './logos/Fortnite.png' },
+            zerobuild: { name: 'Fortnite: Zero Build', logo: './logos/ZeroBuild.png' },
+            pubg: { name: 'PUBG', logo: './logos/PUBG.png' },
+            battlefield: { name: 'Battlefield', logo: './logos/Battlefield.png' },
+            freefire: { name: 'Free Fire', logo: './logos/FreeFire.png' }
         };
 
         // Estado del overlay
@@ -162,20 +206,13 @@
             games: {},
             activeGame: null,
             completedGames: new Set(),
-            totalMatches: 0,
-            client: null,
-            moderators: new Set(), // Cache de moderadores conectados a renrize
-            authorizedUsers: new Map(), // Moderadores de renrize que se han conectado
-            renrizeModeratos: new Set() // Lista de mods detectados en renrize
+            totalMatches: 0
         };
 
         // Configuración desde URL
         const urlParams = new URLSearchParams(window.location.search);
         const CONFIG = {
-            platform: urlParams.get('platform') || 'twitch', // 'twitch' o 'kick'
-            channel: urlParams.get('channel') || 'renrize', // Canal a monitorear
-            authorizedModeratorsChannel: 'renrize', // Canal cuya lista de mods se verifica
-            twitchOAuth: urlParams.get('oauth') || '', // Token OAuth para Twitch
+            channel: urlParams.get('channel') || 'renrize'
         };
 
         // Inicializar juegos
@@ -206,7 +243,6 @@
                     <img src="${game.logo}" alt="${game.name}" class="game-logo" onerror="this.style.background='rgba(50,50,70,0.8)'">
                     <div class="game-counter">${game.matches}</div>
                 `;
-
                 container.appendChild(item);
             });
 
@@ -223,15 +259,12 @@
         function updateGameMatches(gameKey, change) {
             if (state.games[gameKey]) {
                 state.games[gameKey].matches += change;
-                
                 if (state.games[gameKey].matches < 0) {
                     state.games[gameKey].matches = 0;
                 }
-
                 if (change > 0) {
                     state.activeGame = gameKey;
                 }
-
                 state.totalMatches = Object.values(state.games).reduce((sum, game) => sum + game.matches, 0);
                 renderGames();
             }
@@ -247,196 +280,40 @@
             }
         }
 
-        // Obtener lista de moderadores de renrize (demo - necesita token OAuth real)
-        async function fetchRenrizeModeratos() {
-            try {
-                // Nota: En producción, usar una API backend que verifique
-                // moderadores de renrize con autenticación OAuth de Twitch
-                console.log('📋 Sistema de verificación de moderadores inicializado');
-                // Para demo, aceptar cualquier mod que diga "renrize" en su info
-                return true;
-            } catch (error) {
-                console.error('❌ Error obteniendo mods:', error);
-                return false;
-            }
-        }
+        // Procesar comando del input
+        function processCommand() {
+            const input = document.getElementById('commandInput');
+            const statusEl = document.getElementById('statusText');
+            const command = input.value.trim();
 
-        // Conectar a Twitch Chat usando TMI.js
-        function connectTwitchChat() {
-            console.log('🔗 Conectando a Twitch Chat...');
-
-            // Verificar si TMI está disponible
-            if (typeof tmi === 'undefined') {
-                console.error('❌ TMI.js aún no se ha cargado. Reintentando en 2 segundos...');
-                setTimeout(connectTwitchChat, 2000);
+            if (!command) {
+                statusEl.textContent = '❌ Ingresa un comando';
                 return;
             }
 
-            // Conectarse al canal de transmisión
-            const channels = [CONFIG.channel];
-            
-            // Si estamos en un canal diferente a renrize, también conectar a renrize para obtener mods
-            if (CONFIG.channel.toLowerCase() !== 'renrize') {
-                channels.push('renrize');
-                console.log('🔐 También monitorizando renrize para obtener lista de mods...');
-            }
-
-            state.client = new tmi.Client({
-                identity: {
-                    username: 'justinfan' + Math.floor(Math.random() * 100000),
-                    password: 'SCHMOOPIIE'
-                },
-                channels: channels,
-                connection: {
-                    reconnect: true,
-                    maxAttempts: Infinity
-                }
-            });
-
-            state.client.connect().catch(error => {
-                console.error('❌ Error conectando:', error);
-                setTimeout(connectTwitchChat, 5000);
-            });
-
-            state.client.on('message', (channel, tags, message, self) => {
-                if (self) return;
-                
-                const channelName = channel.replace('#', '').toLowerCase();
-                
-                // Si el mensaje viene de renrize, cachear info de mods
-                if (channelName === 'renrize') {
-                    if (tags.mod || tags['room-id'] === tags['user-id']) {
-                        state.renrizeModeratos.add(tags.username.toLowerCase());
-                    }
-                }
-                
-                // Solo procesar comandos del canal configurado
-                if (channelName === CONFIG.channel.toLowerCase()) {
-                    handleChatMessage(channel, tags, message);
-                }
-            });
-
-            state.client.on('connected', (addr, port) => {
-                console.log(`🟢 Conectado a Twitch en canal(es): ${channels.join(', ')}`);
-            });
-
-            state.client.on('disconnected', (reason) => {
-                console.log('🔴 Desconectado de Twitch:', reason);
-                setTimeout(connectTwitchChat, 5000);
-            });
-        }
-
-        // Obtener información del canal de Kick
-        async function getKickChannelInfo() {
-            try {
-                const response = await fetch(`https://kick.com/api/v2/channels/${CONFIG.channel}`);
-                const data = await response.json();
-                
-                state.kickChatroomId = data.chatroom.id;
-                state.kickChannelId = data.id;
-                
-                console.log('📡 Info de Kick obtenida:', CONFIG.channel);
-                return true;
-            } catch (error) {
-                console.error('❌ Error obteniendo info de Kick:', error);
-                return false;
-            }
-        }
-
-        // Conectar al WebSocket de Kick
-        async function connectKickWebSocket() {
-            const success = await getKickChannelInfo();
-            if (!success) return;
-
-            const wsUrl = "wss://ws-us2.pusher.com/app/32cbd69e4b950bf97679?protocol=7&client=js&version=8.4.0&flash=false";
-            state.client = new WebSocket(wsUrl);
-
-            state.client.onopen = () => {
-                console.log('🟢 WebSocket de Kick conectado');
-                
-                const channels = [
-                    `chatrooms.${state.kickChatroomId}.v2`,
-                    `chatroom_${state.kickChatroomId}`,
-                    `channel.${state.kickChannelId}`
-                ];
-
-                channels.forEach(channel => {
-                    state.client.send(JSON.stringify({
-                        event: "pusher:subscribe",
-                        data: { auth: "", channel: channel }
-                    }));
-                });
-            };
-
-            state.client.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    
-                    if (data.event === 'App\\Events\\ChatMessageEvent') {
-                        const msgData = JSON.parse(data.data);
-                        handleKickChatMessage(msgData);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                }
-            };
-
-            state.client.onclose = () => {
-                console.log('🔴 Desconectado de Kick');
-                setTimeout(() => connectKickWebSocket(), 5000);
-            };
-        }
-
-        // Manejar mensajes del chat de Twitch
-        function handleChatMessage(channel, tags, message) {
-            const username = (tags['display-name'] || tags.username || '').toLowerCase();
-            const content = message.trim();
-            
-            // DEBUG
-            console.log(`📨 Mensaje de ${username}: "${content}" | mod=${tags.mod} | badges:`, tags.badges);
-            
-            // VERIFICACIÓN CRÍTICA: Solo mods de 'renrize' pueden ejecutar comandos
-            const isBroadcaster = tags['room-id'] === tags['user-id'];
-            const isModerator = tags.mod === true;
-            
-            // Verificar si el usuario es moderador de renrize
-            let isRenrizeModerator = false;
-            
-            if (CONFIG.channel.toLowerCase() === 'renrize') {
-                // Si estamos EN renrize, verificar badges directamente
-                isRenrizeModerator = isModerator || isBroadcaster;
-                console.log(`📊 En renrize - ${username}: mod=${isModerator}, broadcaster=${isBroadcaster}, AUTORIZADO=${isRenrizeModerator}`);
-            } else {
-                // Si estamos en otro canal, verificar contra la cache de mods de renrize
-                isRenrizeModerator = state.renrizeModeratos.has(username) || isBroadcaster;
-                console.log(`🔍 En ${CONFIG.channel} - Verificando ${username} contra mods de renrize: ${isRenrizeModerator}`);
-            }
-
-            if (!isRenrizeModerator) {
-                console.log(`🚫 Acceso denegado: ${username} no es moderador de renrize`);
-                return;
-            }
-
-            console.log(`✅ Comando autorizado de ${username}`);
+            console.log('📝 Comando ingresado:', command);
 
             // Comando para completado: !obs juego done
             const completedRegex = /^!obs\s+(\w+)\s+done$/i;
-            const completedMatch = content.match(completedRegex);
+            const completedMatch = command.match(completedRegex);
 
             if (completedMatch) {
                 const gameKey = completedMatch[1].toLowerCase();
-                console.log(`🎮 Comando DONE: ${gameKey}`);
                 if (state.games[gameKey]) {
                     markGameCompleted(gameKey);
+                    statusEl.textContent = `✅ ${gameKey.toUpperCase()} - Completado`;
+                    input.value = '';
+                    setTimeout(() => statusEl.textContent = '✅ Listo', 2000);
+                    return;
                 } else {
-                    console.log(`❌ Juego no encontrado: ${gameKey}`);
+                    statusEl.textContent = `❌ Juego no encontrado: ${gameKey}`;
+                    return;
                 }
-                return;
             }
 
             // Comando normal: !obs juego +1 o !obs juego -1
             const commandRegex = /^!obs\s+(\w+)\s+([\+\-]?\d+)$/i;
-            const match = content.match(commandRegex);
+            const match = command.match(commandRegex);
 
             if (match) {
                 const gameKey = match[1].toLowerCase();
@@ -446,105 +323,35 @@
                     change = Math.abs(change);
                 }
 
-                console.log('🎮 Comando NÚMERO:', gameKey, change);
-
                 if (state.games[gameKey]) {
                     updateGameMatches(gameKey, change);
+                    const sign = change > 0 ? '+' : '';
+                    statusEl.textContent = `✅ ${gameKey.toUpperCase()} ${sign}${change}`;
+                    input.value = '';
+                    setTimeout(() => statusEl.textContent = '✅ Listo', 2000);
                 } else {
-                    console.log(`❌ Juego no encontrado: ${gameKey}`);
-                }
-            }
-        }
-
-        // Manejar mensajes del chat de Kick
-        function handleKickChatMessage(msgData) {
-            const username = msgData.sender.username.toLowerCase();
-            const content = msgData.content.trim();
-            const sender = msgData.sender;
-            
-            // Verificar si es moderador/broadcaster en Kick
-            let isModerator = false;
-            
-            if (sender.identity?.badges) {
-                isModerator = sender.identity.badges.some(badge => 
-                    badge.type === 'moderator' || 
-                    badge.type === 'broadcaster' || 
-                    badge.type === 'owner'
-                );
-            }
-            
-            if (!isModerator && sender.slug) {
-                isModerator = sender.slug.toLowerCase() === CONFIG.channel.toLowerCase();
-            }
-
-            // VERIFICACIÓN CRÍTICA: Solo mods de 'renrize' pueden ejecutar comandos
-            let isAuthorizedModOfRenrize = false;
-
-            if (CONFIG.authorizedModeratorsChannel.toLowerCase() === CONFIG.channel.toLowerCase()) {
-                // Si estamos en el canal de renrize, verificar si es mod
-                isAuthorizedModOfRenrize = isModerator;
-            } else {
-                // Si no estamos en renrize, rechazar (solo renrize mods pueden controlar)
-                isAuthorizedModOfRenrize = false;
-            }
-
-            if (!isAuthorizedModOfRenrize) {
-                console.log(`🚫 Acceso denegado Kick: ${username} no es moderador de renrize`);
-                return;
-            }
-
-            console.log(`✅ Comando Kick de ${username} (Mod de renrize)`);
-
-            // Comando para completado: !obs juego done
-            const completedRegex = /^!obs\s+(\w+)\s+done$/i;
-            const completedMatch = content.match(completedRegex);
-
-            if (completedMatch) {
-                const gameKey = completedMatch[1].toLowerCase();
-                if (state.games[gameKey]) {
-                    markGameCompleted(gameKey);
+                    statusEl.textContent = `❌ Juego no encontrado: ${gameKey}`;
                 }
                 return;
             }
 
-            // Comando normal: !obs juego +1 o !obs juego -1
-            const commandRegex = /^!obs\s+(\w+)\s+([\+\-]?\d+)$/i;
-            const match = content.match(commandRegex);
-
-            if (match) {
-                const gameKey = match[1].toLowerCase();
-                let change = parseInt(match[2]);
-                
-                if (match[2][0] !== '+' && match[2][0] !== '-') {
-                    change = Math.abs(change);
-                }
-
-                console.log('🎮 Kick:', gameKey, change);
-
-                if (state.games[gameKey]) {
-                    updateGameMatches(gameKey, change);
-                }
-            }
+            statusEl.textContent = '❌ Formato incorrecto. Usa: !obs juego +1 o !obs juego done';
         }
 
-        // Inicialización
-        window.addEventListener('DOMContentLoaded', () => {
+        // Ejecutar comando con Enter
+        document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Overlay iniciado');
-            console.log(`📡 Plataforma: ${CONFIG.platform.toUpperCase()}`);
-            console.log(`📺 Canal de transmisión: ${CONFIG.channel}`);
-            console.log(`🔐 Solo mods de 'renrize' pueden ejecutar comandos`);
+            console.log(`📺 Canal: ${CONFIG.channel}`);
             
             initGames();
             renderGames();
-            
-            // Conectar según la plataforma
-            if (CONFIG.platform.toLowerCase() === 'kick') {
-                console.log('🔗 Conectando a Kick...');
-                connectKickWebSocket();
-            } else {
-                console.log('🔗 Conectando a Twitch...');
-                connectTwitchChat();
-            }
+
+            // Enter en el input ejecuta el comando
+            document.getElementById('commandInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    processCommand();
+                }
+            });
         });
     </script>
 </body>
