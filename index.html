@@ -264,17 +264,20 @@
                         return;
                     }
 
-                    console.log(`💬 ${user}: ${message} | mod=${badges.moderator} | broadcaster=${flags.broadcaster}`);
+                    const userLower = user.toLowerCase();
+                    console.log(`💬 ${user} (${userLower}): ${message}`);
+                    console.log(`   mod=${badges.moderator} | broadcaster=${flags.broadcaster} | en whitelist=${state.renrizeModeratos.has(userLower)}`);
                     
                     // Detectar y cachear mods de renrize
                     if (badges.moderator || flags.broadcaster) {
-                        state.renrizeModeratos.add(user.toLowerCase());
-                        console.log(`✅ Moderador detectado: ${user}`);
+                        state.renrizeModeratos.add(userLower);
+                        console.log(`✅ Moderador detectado y agregado: ${user}`);
+                        console.log(`📋 Lista de mods autorizados:`, Array.from(state.renrizeModeratos));
                     }
                     
                     // Solo procesar comandos de mods autorizados
-                    if (!state.renrizeModeratos.has(user.toLowerCase())) {
-                        console.log(`🚫 ${user} no está autorizado`);
+                    if (!state.renrizeModeratos.has(userLower)) {
+                        console.log(`🚫 ${user} no está en la whitelist. Mods autorizados: ${Array.from(state.renrizeModeratos).join(', ')}`);
                         return;
                     }
 
@@ -287,6 +290,9 @@
                         const gameKey = doneMatch[1].toLowerCase();
                         if (state.games[gameKey]) {
                             markGameCompleted(gameKey);
+                            console.log(`✅ Completado procesado: ${gameKey}`);
+                        } else {
+                            console.log(`❌ Juego no encontrado: ${gameKey}`);
                         }
                         return;
                     }
@@ -302,7 +308,12 @@
                         }
                         if (state.games[gameKey]) {
                             updateGameMatches(gameKey, change);
+                            console.log(`✅ Comando procesado: ${gameKey} ${change > 0 ? '+' : ''}${change}`);
+                        } else {
+                            console.log(`❌ Juego no encontrado: ${gameKey}`);
                         }
+                    } else {
+                        console.log(`❌ Formato de comando incorrecto: ${message}`);
                     }
                 };
 
