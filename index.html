@@ -6,6 +6,8 @@
     <title>Battle Royale Overlay - Sincronizado</title>
     <!-- ComfyJS para Twitch Chat -->
     <script src="https://cdn.jsdelivr.net/npm/comfy.js@latest/dist/comfy.min.js"></script>
+    <!-- Supabase para Base de Datos en Tiempo Real -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -127,6 +129,13 @@
     </div>
 
     <script>
+        // Configuración Supabase
+        const SUPABASE_URL = 'https://soocvzhelrklnvqdjqwo.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_OUan7bLd9sHg-RU77Hn6kQ_YDOAVkH4';
+        const { createClient } = window.supabase;
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let isSyncing = false; // Bandera para evitar sincronización infinita
+
         // Configuración de juegos
         const GAMES = {
             apex: { name: 'Apex Legends', logo: './logos/Apex.png' },
@@ -193,8 +202,9 @@
             container.appendChild(totalItem);
         }
 
-        // Guardar estado en localStorage
-        function saveState() {
+        // Guardar estado en Supabase
+        async function saveState() {
+            isSyncing = true;
             const data = {
                 games: Object.fromEntries(
                     Object.entries(state.games).map(([key, game]) => [key, game.matches])
@@ -203,25 +213,88 @@
                 completedGames: Array.from(state.completedGames),
                 totalMatches: state.totalMatches
             };
-            localStorage.setItem(`overlay_${CONFIG.channel}`, JSON.stringify(data));
-            console.log('💾 Estado guardado');
+            
+            try {
+                const { error } = await supabase
+                    .from('obs_overlay')
+                    .update({ state: data })
+                    .eq('id', 1);
+                
+                if (error) throw error;
+                console.log('💾 Estado guardado en Supabase');
+            } catch (error) {
+                console.error('❌ Error al guardar:', error);
+            }
+            isSyncing = false;
         }
 
-        // Cargar estado desde localStorage
-        function loadState() {
-            const data = JSON.parse(localStorage.getItem(`overlay_${CONFIG.channel}`) || '{}');
-            if (data.games) {
-                Object.keys(data.games).forEach(gameKey => {
-                    if (state.games[gameKey]) {
-                        state.games[gameKey].matches = data.games[gameKey];
-                    }
-                });
-                state.activeGame = data.activeGame;
-                state.completedGames = new Set(data.completedGames || []);
-                state.totalMatches = data.totalMatches || 0;
-                renderGames();
-                console.log('📂 Estado cargado desde localStorage');
+        // Cargar estado desde Supabase
+        async function loadState() {
+            try {
+                const { data, error } = await supabase
+                    .from('obs_overlay')
+                    .select('state')
+                    .eq('id', 1)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (data && data.state) {
+                    const stateData = data.state;
+                    Object.keys(stateData.games || {}).forEach(gameKey => {
+                        if (state.games[gameKey]) {
+                            state.games[gameKey].matches = stateData.games[gameKey];
+                        }
+                    });
+                    state.activeGame = stateData.activeGame;
+                    state.completedGames = new Set(stateData.completedGames || []);
+                    state.totalMatches = stateData.totalMatches || 0;
+                    renderGames();
+                    console.log('📂 Estado cargado desde Supabase');
+                }
+            } catch (error) {
+                console.error('❌ Error al cargar:', error);
             }
+        }
+
+        // Resetear todo a 0
+        async function resetAllState() {
+            state.games = {};
+            Object.keys(GAMES).forEach(gameKey => {
+                state.games[gameKey] = {
+                    name: GAMES[gameKey].name,
+                    logo: GAMES[gameKey].logo,
+                    matches: 0
+                };
+            });
+            state.activeGame = null;
+            state.completedGames = new Set();
+            state.totalMatches = 0;
+            renderGames();
+            await saveState();
+            console.log('🔄 ¡TODO RESETEADO A 0!');
+        }
+
+        // Sincronizar cambios desde Supabase en tiempo real
+        function setupRealTimeSync() {
+            supabase
+                .channel('obs_overlay')
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'obs_overlay' }, (payload) => {
+                    if (isSyncing) return; // Ignorar si es nuestra propia actualización
+                    
+                    const stateData = payload.new.state;
+                    Object.keys(stateData.games || {}).forEach(gameKey => {
+                        if (state.games[gameKey]) {
+                            state.games[gameKey].matches = stateData.games[gameKey];
+                        }
+                    });
+                    state.activeGame = stateData.activeGame;
+                    state.completedGames = new Set(stateData.completedGames || []);
+                    state.totalMatches = stateData.totalMatches || 0;
+                    renderGames();
+                    console.log('🔄 Estado sincronizado desde otra ventana');
+                })
+                .subscribe();
         }
 
         // Actualizar contador
@@ -285,6 +358,13 @@
                         return;
                     }
 
+                    // Comando reset: !obsreset
+                    if (message.toLowerCase() === '!obsreset') {
+                        resetAllState();
+                        console.log(`🔄 [${roleLabel}] ${user}: RESETEAR TODO`);
+                        return;
+                    }
+
                     // Comando done: !obs juego done
                     const doneRegex = /^!obs\s+(\w+)\s+done$/i;
                     const doneMatch = message.match(doneRegex);
@@ -328,15 +408,18 @@
         }
 
         // Inicialización
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             console.log('🚀 Overlay iniciado');
             console.log(`📺 Canal: ${CONFIG.channel}`);
             
             initGames();
             renderGames();
             
-            // Cargar estado guardado
-            loadState();
+            // Cargar estado guardado desde Supabase
+            await loadState();
+            
+            // Configurar sincronización en tiempo real
+            setupRealTimeSync();
             
             // Conectar a Twitch Chat
             connectTwitchChat();
