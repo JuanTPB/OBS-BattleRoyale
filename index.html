@@ -381,6 +381,9 @@
             const username = (tags['display-name'] || tags.username || '').toLowerCase();
             const content = message.trim();
             
+            // DEBUG
+            console.log(`📨 Mensaje de ${username}: "${content}" | mod=${tags.mod} | badges:`, tags.badges);
+            
             // VERIFICACIÓN CRÍTICA: Solo mods de 'renrize' pueden ejecutar comandos
             const isBroadcaster = tags['room-id'] === tags['user-id'];
             const isModerator = tags.mod === true;
@@ -391,7 +394,7 @@
             if (CONFIG.channel.toLowerCase() === 'renrize') {
                 // Si estamos EN renrize, verificar badges directamente
                 isRenrizeModerator = isModerator || isBroadcaster;
-                console.log(`📊 En renrize - ${username}: mod=${isModerator}, broadcaster=${isBroadcaster}`);
+                console.log(`📊 En renrize - ${username}: mod=${isModerator}, broadcaster=${isBroadcaster}, AUTORIZADO=${isRenrizeModerator}`);
             } else {
                 // Si estamos en otro canal, verificar contra la cache de mods de renrize
                 isRenrizeModerator = state.renrizeModeratos.has(username) || isBroadcaster;
@@ -411,8 +414,11 @@
 
             if (completedMatch) {
                 const gameKey = completedMatch[1].toLowerCase();
+                console.log(`🎮 Comando DONE: ${gameKey}`);
                 if (state.games[gameKey]) {
                     markGameCompleted(gameKey);
+                } else {
+                    console.log(`❌ Juego no encontrado: ${gameKey}`);
                 }
                 return;
             }
@@ -429,10 +435,12 @@
                     change = Math.abs(change);
                 }
 
-                console.log('🎮', gameKey, change);
+                console.log('🎮 Comando NÚMERO:', gameKey, change);
 
                 if (state.games[gameKey]) {
                     updateGameMatches(gameKey, change);
+                } else {
+                    console.log(`❌ Juego no encontrado: ${gameKey}`);
                 }
             }
         }
