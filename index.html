@@ -259,6 +259,11 @@
                 ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
+                    // Solo procesar mensajes que empiezan con !obs
+                    if (!message.toLowerCase().startsWith('!obs')) {
+                        return;
+                    }
+
                     console.log(`💬 ${user}: ${message} | mod=${badges.moderator} | broadcaster=${flags.broadcaster}`);
                     
                     // Detectar y cachear mods de renrize
