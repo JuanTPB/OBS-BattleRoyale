@@ -117,24 +117,7 @@
         }
 
         .status-indicator {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #00ff00;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            border: 1px solid #00ff00;
-        }
-
-        .status-indicator.connected {
-            color: #00ff00;
-        }
-
-        .status-indicator.disconnected {
-            color: #ff0000;
+            display: none;
         }
     </style>
 </head>
@@ -142,8 +125,6 @@
     <div class="games-container" id="gamesContainer">
         <!-- Los juegos se generarán dinámicamente -->
     </div>
-
-    <div class="status-indicator" id="statusIndicator">🔄 Conectando...</div>
 
     <script>
         // Configuración de juegos
@@ -273,7 +254,8 @@
         // Conectar a Twitch Chat
         function connectTwitchChat() {
             try {
-                ComfyJS.Init(CONFIG.channel, null, ['renrize']);
+                // Siempre conectar a renrize para escuchar comandos
+                ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
                     console.log(`💬 ${user}: ${message} | mod=${badges.moderator}`);
@@ -281,7 +263,6 @@
                     // Solo mods de renrize
                     const isModerator = badges.moderator || flags.broadcaster;
                     if (!isModerator) {
-                        console.log(`🚫 ${user} no es moderador`);
                         return;
                     }
 
@@ -292,8 +273,6 @@
                         const gameKey = doneMatch[1].toLowerCase();
                         if (state.games[gameKey]) {
                             markGameCompleted(gameKey);
-                        } else {
-                            console.log(`❌ Juego no encontrado: ${gameKey}`);
                         }
                         return;
                     }
@@ -309,35 +288,21 @@
                         }
                         if (state.games[gameKey]) {
                             updateGameMatches(gameKey, change);
-                        } else {
-                            console.log(`❌ Juego no encontrado: ${gameKey}`);
                         }
                     }
                 };
 
                 ComfyJS.onConnected = (user) => {
                     state.connected = true;
-                    updateStatus('🟢 Conectado a Twitch', true);
-                    console.log('✅ Conectado a Twitch Chat');
+                    console.log('✅ Escuchando comandos de renrize');
                 };
 
                 ComfyJS.onDisconnected = () => {
                     state.connected = false;
-                    updateStatus('🔴 Desconectado de Twitch', false);
-                    console.log('🔴 Desconectado de Twitch');
+                    console.log('🔄 Reconectando...');
                 };
             } catch (error) {
-                console.error('❌ Error conectando a Twitch:', error);
-                updateStatus('⚠️ Error de conexión', false);
-            }
-        }
-
-        // Actualizar indicador de estado
-        function updateStatus(text, connected) {
-            const el = document.getElementById('statusIndicator');
-            if (el) {
-                el.textContent = text;
-                el.className = connected ? 'status-indicator connected' : 'status-indicator disconnected';
+                console.error('❌ Error:', error);
             }
         }
 
