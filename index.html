@@ -144,7 +144,8 @@
             activeGame: null,
             completedGames: new Set(),
             totalMatches: 0,
-            connected: false
+            connected: false,
+            renrizeModeratos: new Set(['juantpb_rize', 'runa_rize']) // Mods autorizados de renrize
         };
 
         // Configuración desde URL
@@ -258,13 +259,21 @@
                 ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
-                    console.log(`💬 ${user}: ${message} | mod=${badges.moderator}`);
+                    console.log(`💬 ${user}: ${message} | mod=${badges.moderator} | broadcaster=${flags.broadcaster}`);
                     
-                    // Solo mods de renrize
-                    const isModerator = badges.moderator || flags.broadcaster;
-                    if (!isModerator) {
+                    // Detectar y cachear mods de renrize
+                    if (badges.moderator || flags.broadcaster) {
+                        state.renrizeModeratos.add(user.toLowerCase());
+                        console.log(`✅ Moderador detectado: ${user}`);
+                    }
+                    
+                    // Solo procesar comandos de mods autorizados
+                    if (!state.renrizeModeratos.has(user.toLowerCase())) {
+                        console.log(`🚫 ${user} no está autorizado`);
                         return;
                     }
+
+                    console.log(`✅ Comando autorizado de ${user}`);
 
                     // Comando done: !obs juego done
                     const doneRegex = /^!obs\s+(\w+)\s+done$/i;
@@ -294,7 +303,7 @@
 
                 ComfyJS.onConnected = (user) => {
                     state.connected = true;
-                    console.log('✅ Escuchando comandos de renrize');
+                    console.log('✅ Escuchando comandos de renrize - Mods autorizados: ' + Array.from(state.renrizeModeratos).join(', '));
                 };
 
                 ComfyJS.onDisconnected = () => {
