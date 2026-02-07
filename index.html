@@ -265,6 +265,13 @@
         function connectTwitchChat() {
             console.log('🔗 Conectando a Twitch Chat...');
 
+            // Verificar si TMI está disponible
+            if (typeof tmi === 'undefined') {
+                console.error('❌ TMI.js aún no se ha cargado. Reintentando en 2 segundos...');
+                setTimeout(connectTwitchChat, 2000);
+                return;
+            }
+
             // Conectarse al canal de transmisión
             const channels = [CONFIG.channel];
             
@@ -276,10 +283,14 @@
 
             state.client = new tmi.Client({
                 identity: {
-                    username: 'bot',
-                    password: 'oauth:' + (CONFIG.twitchOAuth || 'guest')
+                    username: 'justinfan' + Math.floor(Math.random() * 100000),
+                    password: 'SCHMOOPIIE'
                 },
-                channels: channels
+                channels: channels,
+                connection: {
+                    reconnect: true,
+                    maxAttempts: Infinity
+                }
             });
 
             state.client.connect().catch(error => {
