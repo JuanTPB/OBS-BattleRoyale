@@ -435,18 +435,6 @@
                 console.error('Error al iniciar ComfyJS:', error);
             }
         }
-                    state.connected = true;
-                    console.log('✅ ComfyJS conectado');
-                };
-
-                ComfyJS.onDisconnected = () => {
-                    console.log('⚠️ ComfyJS desconectado (usando IRC directo)');
-                };
-                
-            } catch (error) {
-                console.error('❌ Error al conectar:', error);
-            }
-        }
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', async () => {
