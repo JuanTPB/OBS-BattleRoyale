@@ -332,12 +332,14 @@
         function procesarComandoOBS(user, message, flags, badges) {
             console.log(`✅ procesarComandoOBS recibió: user="${user}", msg="${message}"`);
             
-            // Solo procesar mensajes que empiezan con !obs
-            if (!message.toLowerCase().startsWith('!obs')) {
+            // Aceptar comandos con o sin ! al inicio
+            const isCommand = message.toLowerCase().startsWith('!obs') || message.toLowerCase().startsWith('obs');
+            
+            if (!isCommand) {
                 return;
             }
 
-            console.log(`🔍 Detectado comando !obs de ${user}`);
+            console.log(`🔍 Detectado comando de ${user}`);
 
             const userLower = user.toLowerCase();
             const isLeadMod = userLower === 'juantpb_rize';
@@ -370,15 +372,15 @@
 
             const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
 
-            // Comando reset: !obsreset
-            if (message.toLowerCase() === '!obsreset') {
+            // Comando reset: !obsreset o obsreset
+            if (message.toLowerCase() === '!obsreset' || message.toLowerCase() === 'obsreset') {
                 resetAllState();
                 console.log(`🔄 [${roleLabel}] ${user}: RESETEAR TODO`);
                 return;
             }
 
-            // Comando done: !obs juego done
-            const doneRegex = /^!obs\s+(\w+)\s+done$/i;
+            // Comando done: !obs juego done o obs juego done
+            const doneRegex = /^!?obs\s+(\w+)\s+done$/i;
             const doneMatch = message.match(doneRegex);
             if (doneMatch) {
                 const gameKey = doneMatch[1].toLowerCase();
@@ -389,8 +391,8 @@
                 return;
             }
 
-            // Comando número: !obs juego +1
-            const cmdRegex = /^!obs\s+(\w+)\s+([\+\-]?\d+)$/i;
+            // Comando número: !obs juego +1 o obs juego +1
+            const cmdRegex = /^!?obs\s+(\w+)\s+([\+\-]?\d+)$/i;
             const match = message.match(cmdRegex);
             if (match) {
                 const gameKey = match[1].toLowerCase();
