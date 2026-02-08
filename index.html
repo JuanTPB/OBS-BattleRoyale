@@ -412,29 +412,30 @@
                     ws.send('JOIN #renrize');
                     console.log('📺 Unido a #renrize');
                     
-                    // Keepalive: enviar PING cada 30 segundos para mantener activa la conexión
+                    // Keepalive más agresivo: enviar PING cada 10 segundos
                     clearInterval(heartbeatInterval);
                     heartbeatInterval = setInterval(() => {
                         if (ws && ws.readyState === WebSocket.OPEN) {
-                            ws.send('PING :tmi.twitch.tv');
+                            ws.send('PING');
                         }
-                    }, 30000);
+                    }, 10000);
                 };
                 
                 ws.onmessage = (event) => {
                     const lines = event.data.split('\r\n');
                     
                     lines.forEach(line => {
-                        if (!line) return;
+                        if (!line || line.trim().length === 0) return;
                         
-                        // Responder a PING
+                        // Responder a PING del servidor
                         if (line.startsWith('PING')) {
-                            ws.send('PONG :tmi.twitch.tv');
+                            const pingArg = line.substring(5).trim();
+                            ws.send(`PONG ${pingArg}`);
                             return;
                         }
                         
-                        // Ignorar mensajes de control
-                        if (line.includes('366') || line.includes('001') || line.includes('002') || line.includes('003') || line.includes('004') || line.includes('375') || line.includes('372')) {
+                        // Ignorar messajes de control IRC
+                        if (/:(.*) (001|002|003|004|353|366|375|372|376)/.test(line)) {
                             return;
                         }
                         
