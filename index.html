@@ -330,12 +330,11 @@
 
         // Procesar comando !obs
         function procesarComandoOBS(user, message, flags, badges) {
-            // DEBUG: Log todos los mensajes
-            console.log(`💬 MENSAJE RECIBIDO: ${user} → ${message}`);
+            // DEBUG: Log TODOS los mensajes con detalles
+            console.log(`💬 ${user}: "${message}" | mod:${badges?.moderator || flags?.moderator} bcast:${flags?.broadcaster || badges?.broadcaster}`);
             
             // Solo procesar mensajes que empiezan con !obs
             if (!message.toLowerCase().startsWith('!obs')) {
-                console.log(`❌ No empieza con !obs → ${message}`);
                 return;
             }
 
@@ -344,13 +343,14 @@
             const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
             
             // Detectar y cachear mods de renrize
-            if (badges.moderator || flags.broadcaster) {
+            const isMod = badges?.moderator || flags?.moderator || flags?.broadcaster || badges?.broadcaster;
+            if (isMod) {
                 if (!state.renrizeModeratos.has(userLower)) {
                     state.renrizeModeratos.add(userLower);
                     if (isLeadMod) {
-                        console.log(`👑 LEAD MODERATOR detectado: ${user}`);
+                        console.log(`👑 LEAD MODERATOR: ${user}`);
                     } else {
-                        console.log(`✅ Moderador detectado: ${user}`);
+                        console.log(`✅ MOD: ${user}`);
                     }
                 }
             }
@@ -397,88 +397,44 @@
 
         // Conectar directo a Twitch IRC via WebSocket (sin dependencias)
         function connectDirectIRC() {
-            let ws;
-            let heartbeatInterval;
-            
-            const conectar = () => {
-                ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
-                
-                ws.onopen = () => {
-                    console.log('🔗 IRC: Conectando...');
-                    // Conectar anónimo (sin OAuth)
-                    ws.send('PASS SCHMOOPIIE');
-                    ws.send('NICK justinfan' + Math.random().toString(36).substr(2, 9));
-                    ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
-                    ws.send('JOIN #renrize');
-                    console.log('📺 Unido a #renrize');
-                    
-                    // Keepalive más agresivo: enviar PING cada 10 segundos
-                    clearInterval(heartbeatInterval);
-                    heartbeatInterval = setInterval(() => {
-                        if (ws && ws.readyState === WebSocket.OPEN) {
-                            ws.send('PING');
-                        }
-                    }, 10000);
-                };
-                
-                ws.onmessage = (event) => {
-                    const lines = event.data.split('\r\n');
-                    
-                    lines.forEach(line => {
-                        if (!line || line.trim().length === 0) return;
-                        
-                        // Responder a PING del servidor
-                        if (line.startsWith('PING')) {
-                            const pingArg = line.substring(5).trim();
-                            ws.send(`PONG ${pingArg}`);
-                            return;
-                        }
-                        
-                        // Ignorar messajes de control IRC
-                        if (/:(.*) (001|002|003|004|353|366|375|372|376)/.test(line)) {
-                            return;
-                        }
-                        
-                        // Parse: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
-                        const match = line.match(/@[^:]*:(\w+)!.*PRIVMSG #\w+ :(.*)/);
-                        if (match) {
-                            const [, user, message] = match;
-                            console.log(`💬 ${user} → ${message}`);
-                            procesarComandoOBS(user, message, {broadcaster: false}, {moderator: false});
-                        }
-                    });
-                };
-                
-                ws.onerror = (error) => {
-                    console.error('❌ Error IRC:', error);
-                };
-                
-                ws.onclose = () => {
-                    clearInterval(heartbeatInterval);
-                    console.log('⚠️ IRC cerrado, reconectando...');
-                    setTimeout(conectar, 2000);
-                };
-            };
-            
-            conectar();
+            // Función simplificada - no usada, ComfyJS solo
+            console.log('🔗 ComfyJS inicializando...');
         }
 
-        // Conectar a Twitch Chat
+        // Conectar a Twitch Chat - SOLO ComfyJS
         function connectTwitchChat() {
             try {
-                // PRIMARIA: Conexión directa IRC (más confiable)
-                console.log('🚀 Iniciando conexión IRC directa a Twitch...');
-                connectDirectIRC();
+                console.log('🚀 Conectando a Twitch Chat (ComfyJS)...');
                 
-                // SECUNDARIA: ComfyJS como backup
-                console.log('🔄 Iniciando ComfyJS como backup...');
+                // ComfyJS es la única conexión
                 ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
+                    // Log completo con TODOS los parámetros
+                    console.log(`[ComfyJS] ${user}: ${message}`, {
+                        flags: flags,
+                        badges: badges,
+                        isFirstMessage: isFirstMessage,
+                        moderator: badges?.moderator,
+                        broadcaster: flags?.broadcaster
+                    });
+                    
+                    // Procesar comando
                     procesarComandoOBS(user, message, flags, badges);
                 };
 
                 ComfyJS.onConnected = (user) => {
+                    console.log('✅ ComfyJS conectado');
+                    state.connected = true;
+                };
+                
+                ComfyJS.onError = (error) => {
+                    console.error('❌ ComfyJS error:', error);
+                };
+            } catch (error) {
+                console.error('Error al iniciar ComfyJS:', error);
+            }
+        }
                     state.connected = true;
                     console.log('✅ ComfyJS conectado');
                 };
