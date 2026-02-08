@@ -416,12 +416,16 @@
             try {
                 console.log('🚀 Conectando a Twitch Chat (ComfyJS)...');
                 
-                // ComfyJS es la única conexión
-                ComfyJS.Init('renrize', null, ['renrize']);
+                // Escuchar múltiples canales
+                const channels = ['renrize', 'juantpb_rize'];
+                console.log(`📡 Escuchando canales: ${channels.join(', ')}`);
                 
-                ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
+                ComfyJS.Init('renrize', null, channels);
+                
+                ComfyJS.onChat = (user, message, flags, isFirstMessage, badges, channel) => {
                     // Log EXTREMADAMENTE detallado para debugging
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log(`Channel: #${channel || 'desconocido'}`);
                     console.log(`User: "${user}"`);
                     console.log(`Message: "${message}"`);
                     console.log(`Flags:`, flags);
