@@ -424,12 +424,19 @@
                 
                 ComfyJS.Init('renrize', null, [channel]);
                 
+                // LISTENER GLOBAL de TODOS los eventos
+                ComfyJS.onAny = (event, data) => {
+                    console.log(`[EVENT] ${event}:`, data);
+                };
+                
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges, channelName) => {
                     // Log EXTREMADAMENTE detallado para debugging
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     console.log(`Channel: #${channelName || channel}`);
                     console.log(`User: "${user}"`);
                     console.log(`Message: "${message}"`);
+                    console.log(`Message length: ${message.length}`);
+                    console.log(`Message charCodes:`, message.split('').map(c => c.charCodeAt(0)));
                     console.log(`Flags:`, flags);
                     console.log(`Badges:`, badges);
                     console.log(`Is Moderator (badges.moderator):`, badges?.moderator);
