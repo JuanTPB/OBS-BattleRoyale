@@ -327,85 +327,91 @@
             }
         }
 
+        // Procesar comando !obs
+        function procesarComandoOBS(user, message, flags, badges) {
+            // DEBUG: Log todos los mensajes
+            console.log(`💬 MENSAJE RECIBIDO: ${user} → ${message}`);
+            
+            // Solo procesar mensajes que empiezan con !obs
+            if (!message.toLowerCase().startsWith('!obs')) {
+                return;
+            }
+
+            const userLower = user.toLowerCase();
+            const isLeadMod = userLower === 'juantpb_rize';
+            const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
+            
+            // Detectar y cachear mods de renrize
+            if (badges.moderator || flags.broadcaster) {
+                if (!state.renrizeModeratos.has(userLower)) {
+                    state.renrizeModeratos.add(userLower);
+                    if (isLeadMod) {
+                        console.log(`👑 LEAD MODERATOR detectado: ${user}`);
+                    } else {
+                        console.log(`✅ Moderador detectado: ${user}`);
+                    }
+                }
+            }
+            
+            // Solo procesar comandos de mods autorizados
+            if (!state.renrizeModeratos.has(userLower)) {
+                return;
+            }
+
+            // Comando reset: !obsreset
+            if (message.toLowerCase() === '!obsreset') {
+                resetAllState();
+                console.log(`🔄 [${roleLabel}] ${user}: RESETEAR TODO`);
+                return;
+            }
+
+            // Comando done: !obs juego done
+            const doneRegex = /^!obs\s+(\w+)\s+done$/i;
+            const doneMatch = message.match(doneRegex);
+            if (doneMatch) {
+                const gameKey = doneMatch[1].toLowerCase();
+                if (state.games[gameKey]) {
+                    markGameCompleted(gameKey);
+                    console.log(`✅ [${roleLabel}] ${user}: ${gameKey} done`);
+                }
+                return;
+            }
+
+            // Comando número: !obs juego +1
+            const cmdRegex = /^!obs\s+(\w+)\s+([\+\-]?\d+)$/i;
+            const match = message.match(cmdRegex);
+            if (match) {
+                const gameKey = match[1].toLowerCase();
+                let change = parseInt(match[2]);
+                if (match[2][0] !== '+' && match[2][0] !== '-') {
+                    change = Math.abs(change);
+                }
+                if (state.games[gameKey]) {
+                    updateGameMatches(gameKey, change);
+                    console.log(`✅ [${roleLabel}] ${user}: ${gameKey} ${change > 0 ? '+' : ''}${change}`);
+                }
+            }
+        }
+
         // Conectar a Twitch Chat
         function connectTwitchChat() {
             try {
-                // Siempre conectar a renrize para escuchar comandos
-                ComfyJS.Init('renrize', null, ['renrize']);
+                // Conectar a ambos canales para capturar todos los comandos
+                ComfyJS.Init('renrize', null, ['renrize', 'juantpb_rize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
-                    // DEBUG: Log todos los mensajes
-                    console.log(`💬 MENSAJE RECIBIDO: ${user} → ${message}`);
-                    
-                    // Solo procesar mensajes que empiezan con !obs
-                    if (!message.toLowerCase().startsWith('!obs')) {
-                        return;
-                    }
-
-                    const userLower = user.toLowerCase();
-                    const isLeadMod = userLower === 'juantpb_rize';
-                    const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
-                    
-                    // Detectar y cachear mods de renrize
-                    if (badges.moderator || flags.broadcaster) {
-                        if (!state.renrizeModeratos.has(userLower)) {
-                            state.renrizeModeratos.add(userLower);
-                            if (isLeadMod) {
-                                console.log(`👑 LEAD MODERATOR detectado: ${user}`);
-                            } else {
-                                console.log(`✅ Moderador detectado: ${user}`);
-                            }
-                        }
-                    }
-                    
-                    // Solo procesar comandos de mods autorizados
-                    if (!state.renrizeModeratos.has(userLower)) {
-                        return;
-                    }
-
-                    // Comando reset: !obsreset
-                    if (message.toLowerCase() === '!obsreset') {
-                        resetAllState();
-                        console.log(`🔄 [${roleLabel}] ${user}: RESETEAR TODO`);
-                        return;
-                    }
-
-                    // Comando done: !obs juego done
-                    const doneRegex = /^!obs\s+(\w+)\s+done$/i;
-                    const doneMatch = message.match(doneRegex);
-                    if (doneMatch) {
-                        const gameKey = doneMatch[1].toLowerCase();
-                        if (state.games[gameKey]) {
-                            markGameCompleted(gameKey);
-                            console.log(`✅ [${roleLabel}] ${user}: ${gameKey} done`);
-                        }
-                        return;
-                    }
-
-                    // Comando número: !obs juego +1
-                    const cmdRegex = /^!obs\s+(\w+)\s+([\+\-]?\d+)$/i;
-                    const match = message.match(cmdRegex);
-                    if (match) {
-                        const gameKey = match[1].toLowerCase();
-                        let change = parseInt(match[2]);
-                        if (match[2][0] !== '+' && match[2][0] !== '-') {
-                            change = Math.abs(change);
-                        }
-                        if (state.games[gameKey]) {
-                            updateGameMatches(gameKey, change);
-                            console.log(`✅ [${roleLabel}] ${user}: ${gameKey} ${change > 0 ? '+' : ''}${change}`);
-                        }
-                    }
+                    procesarComandoOBS(user, message, flags, badges);
                 };
 
                 ComfyJS.onConnected = (user) => {
                     state.connected = true;
-                    console.log('✅ Escuchando comandos de renrize - Mods autorizados: ' + Array.from(state.renrizeModeratos).join(', '));
+                    console.log('✅ Conectado a Twitch IRC - Escuchando renrize');
+                    console.log('📋 Mods autorizados: ' + Array.from(state.renrizeModeratos).join(', '));
                 };
 
                 ComfyJS.onDisconnected = () => {
                     state.connected = false;
-                    console.log('🔄 Reconectando...');
+                    console.log('🔄 Reconectando a Twitch...');
                 };
             } catch (error) {
                 console.error('❌ Error:', error);
