@@ -398,8 +398,11 @@
         // Conectar a Twitch Chat
         function connectTwitchChat() {
             try {
-                // Conectar a ambos canales para capturar todos los comandos
-                ComfyJS.Init('renrize', null, ['renrize', 'juantpb_rize']);
+                // Conectar solo a renrize para escuchar comandos
+                ComfyJS.Init('renrize', null, ['renrize']);
+                
+                // Storage para tracking de usuarios vistos (para evitar dobles logs)
+                const seenUsers = new Set();
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
                     procesarComandoOBS(user, message, flags, badges);
@@ -407,17 +410,26 @@
 
                 ComfyJS.onConnected = (user) => {
                     state.connected = true;
-                    console.log('✅ Conectado a Twitch IRC - Escuchando: renrize, juantpb_rize');
+                    console.log('✅ CONECTADO A TWITCH - ESCUCHANDO COMANDOS');
                     console.log('📋 Mods autorizados: ' + Array.from(state.renrizeModeratos).join(', '));
-                    console.log('ℹ️ ComfyJS debe mostrar todos los mensajes que empiezan con "!obs"');
+                    console.log('⏰ Forzando reconexión cada 4 minutos para sincronizar estado...');
                 };
 
                 ComfyJS.onDisconnected = () => {
                     state.connected = false;
-                    console.log('🔄 Reconectando a Twitch...');
+                    console.log('🔄 DESCONECTADO - Reconectando...');
                 };
+                
+                // Reconectar cada 4 minutos para forzar que se capten nuevos mods
+                setInterval(() => {
+                    if (state.connected) {
+                        console.log('🔄 Reconexión forzada para sincronizar con Twitch');
+                        ComfyJS.Init('renrize', null, ['renrize']);
+                    }
+                }, 4 * 60 * 1000);
+                
             } catch (error) {
-                console.error('❌ Error:', error);
+                console.error('❌ Error al conectar:', error);
             }
         }
 
