@@ -406,36 +406,46 @@
                 ws.send('NICK justinfan' + Math.random().toString(36).substr(2, 9));
                 ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
                 ws.send('JOIN #renrize');
-                console.log('📺 Unido a #renrize');
+                console.log('📺 Unido a #renrize - Escuchando mensajes...');
             };
             
             ws.onmessage = (event) => {
-                const line = event.data.trim();
+                const lines = event.data.split('\r\n');
                 
-                // Ignorar PING/PONG
-                if (line.startsWith('PING')) {
-                    ws.send('PONG ' + line.split(' ')[1]);
-                    return;
-                }
-                
-                // Parse: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
-                const match = line.match(/@[^:]*:(\w+)!.*PRIVMSG #\w+ :(.*)/);
-                if (match) {
-                    const [, user, message] = match;
-                    console.log(`💬 IRC directo: ${user} → ${message}`);
+                lines.forEach(line => {
+                    if (!line) return;
                     
-                    // Procesar comandos !obs
-                    procesarComandoOBS(user, message, {broadcaster: false}, {moderator: false});
-                }
+                    // Responder a PING para mantener activa la conexión
+                    if (line.startsWith('PING')) {
+                        ws.send('PONG :tmi.twitch.tv');
+                        return;
+                    }
+                    
+                    // Responder a CAP REQ
+                    if (line.includes('CAP * ACK')) {
+                        console.log('✅ Capabilities activadas');
+                        return;
+                    }
+                    
+                    // Parse: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
+                    const match = line.match(/@[^:]*:(\w+)!.*PRIVMSG #\w+ :(.*)/);
+                    if (match) {
+                        const [, user, message] = match;
+                        console.log(`💬 IRC: ${user} → ${message}`);
+                        
+                        // Procesar comandos !obs
+                        procesarComandoOBS(user, message, {broadcaster: false}, {moderator: false});
+                    }
+                });
             };
             
             ws.onerror = (error) => {
-                console.error('❌ Error IRC WebSocket:', error);
+                console.error('❌ Error IRC:', error);
             };
             
             ws.onclose = () => {
-                console.log('⚠️ IRC WebSocket cerrado, reconectando en 5 segundos...');
-                setTimeout(connectDirectIRC, 5000);
+                console.log('⚠️ IRC desconectado, reconectando en 3 segundos...');
+                setTimeout(connectDirectIRC, 3000);
             };
         }
 
