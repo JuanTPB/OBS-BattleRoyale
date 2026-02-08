@@ -395,14 +395,60 @@
             }
         }
 
+        // Conectar directo a Twitch IRC via WebSocket (sin dependencias)
+        function connectDirectIRC() {
+            const ws = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+            
+            ws.onopen = () => {
+                console.log('🔗 IRC WebSocket: Conectando...');
+                // Conectar anónimo (sin OAuth)
+                ws.send('PASS SCHMOOPIIE');
+                ws.send('NICK justinfan' + Math.random().toString(36).substr(2, 9));
+                ws.send('CAP REQ :twitch.tv/tags twitch.tv/commands');
+                ws.send('JOIN #renrize');
+                console.log('📺 Unido a #renrize');
+            };
+            
+            ws.onmessage = (event) => {
+                const line = event.data.trim();
+                
+                // Ignorar PING/PONG
+                if (line.startsWith('PING')) {
+                    ws.send('PONG ' + line.split(' ')[1]);
+                    return;
+                }
+                
+                // Parse: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :message
+                const match = line.match(/@[^:]*:(\w+)!.*PRIVMSG #\w+ :(.*)/);
+                if (match) {
+                    const [, user, message] = match;
+                    console.log(`💬 IRC directo: ${user} → ${message}`);
+                    
+                    // Procesar comandos !obs
+                    procesarComandoOBS(user, message, {broadcaster: false}, {moderator: false});
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('❌ Error IRC WebSocket:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('⚠️ IRC WebSocket cerrado, reconectando en 5 segundos...');
+                setTimeout(connectDirectIRC, 5000);
+            };
+        }
+
         // Conectar a Twitch Chat
         function connectTwitchChat() {
             try {
-                // Conectar solo a renrize para escuchar comandos
-                ComfyJS.Init('renrize', null, ['renrize']);
+                // PRIMARIA: Conexión directa IRC (más confiable)
+                console.log('🚀 Iniciando conexión IRC directa a Twitch...');
+                connectDirectIRC();
                 
-                // Storage para tracking de usuarios vistos (para evitar dobles logs)
-                const seenUsers = new Set();
+                // SECUNDARIA: ComfyJS como backup
+                console.log('🔄 Iniciando ComfyJS como backup...');
+                ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
                     procesarComandoOBS(user, message, flags, badges);
@@ -410,23 +456,12 @@
 
                 ComfyJS.onConnected = (user) => {
                     state.connected = true;
-                    console.log('✅ CONECTADO A TWITCH - ESCUCHANDO COMANDOS');
-                    console.log('📋 Mods autorizados: ' + Array.from(state.renrizeModeratos).join(', '));
-                    console.log('⏰ Forzando reconexión cada 4 minutos para sincronizar estado...');
+                    console.log('✅ ComfyJS conectado');
                 };
 
                 ComfyJS.onDisconnected = () => {
-                    state.connected = false;
-                    console.log('🔄 DESCONECTADO - Reconectando...');
+                    console.log('⚠️ ComfyJS desconectado (usando IRC directo)');
                 };
-                
-                // Reconectar cada 4 minutos para forzar que se capten nuevos mods
-                setInterval(() => {
-                    if (state.connected) {
-                        console.log('🔄 Reconexión forzada para sincronizar con Twitch');
-                        ComfyJS.Init('renrize', null, ['renrize']);
-                    }
-                }, 4 * 60 * 1000);
                 
             } catch (error) {
                 console.error('❌ Error al conectar:', error);
