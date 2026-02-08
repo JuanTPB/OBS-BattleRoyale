@@ -335,6 +335,7 @@
             
             // Solo procesar mensajes que empiezan con !obs
             if (!message.toLowerCase().startsWith('!obs')) {
+                console.log(`❌ No empieza con !obs → ${message}`);
                 return;
             }
 
@@ -406,8 +407,9 @@
 
                 ComfyJS.onConnected = (user) => {
                     state.connected = true;
-                    console.log('✅ Conectado a Twitch IRC - Escuchando renrize');
+                    console.log('✅ Conectado a Twitch IRC - Escuchando: renrize, juantpb_rize');
                     console.log('📋 Mods autorizados: ' + Array.from(state.renrizeModeratos).join(', '));
+                    console.log('ℹ️ ComfyJS debe mostrar todos los mensajes que empiezan con "!obs"');
                 };
 
                 ComfyJS.onDisconnected = () => {
