@@ -330,35 +330,45 @@
 
         // Procesar comando !obs
         function procesarComandoOBS(user, message, flags, badges) {
-            // DEBUG: Log TODOS los mensajes con detalles
-            console.log(`💬 ${user}: "${message}" | mod:${badges?.moderator || flags?.moderator} bcast:${flags?.broadcaster || badges?.broadcaster}`);
+            console.log(`✅ procesarComandoOBS recibió: user="${user}", msg="${message}"`);
             
             // Solo procesar mensajes que empiezan con !obs
             if (!message.toLowerCase().startsWith('!obs')) {
                 return;
             }
 
+            console.log(`🔍 Detectado comando !obs de ${user}`);
+
             const userLower = user.toLowerCase();
             const isLeadMod = userLower === 'juantpb_rize';
-            const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
+            const isMod = badges?.moderator || flags?.moderator || flags?.broadcaster || badges?.broadcaster;
+            
+            console.log(`  - Usuario: ${user}`);
+            console.log(`  - Es Lead Mod: ${isLeadMod}`);
+            console.log(`  - Es Mod: ${isMod}`);
+            console.log(`  - En whitelist: ${state.renrizeModeratos.has(userLower)}`);
             
             // Detectar y cachear mods de renrize
-            const isMod = badges?.moderator || flags?.moderator || flags?.broadcaster || badges?.broadcaster;
             if (isMod) {
                 if (!state.renrizeModeratos.has(userLower)) {
                     state.renrizeModeratos.add(userLower);
                     if (isLeadMod) {
-                        console.log(`👑 LEAD MODERATOR: ${user}`);
+                        console.log(`👑 LEAD MODERATOR agregado: ${user}`);
                     } else {
-                        console.log(`✅ MOD: ${user}`);
+                        console.log(`✅ MOD agregado: ${user}`);
                     }
                 }
             }
             
             // Solo procesar comandos de mods autorizados
             if (!state.renrizeModeratos.has(userLower)) {
+                console.log(`❌ ${user} NO está en whitelist de mods`);
                 return;
             }
+            
+            console.log(`✅ ${user} AUTORIZADO para procesar comando`);
+
+            const roleLabel = isLeadMod ? '👑 LEAD MOD' : 'MOD';
 
             // Comando reset: !obsreset
             if (message.toLowerCase() === '!obsreset') {
@@ -410,14 +420,15 @@
                 ComfyJS.Init('renrize', null, ['renrize']);
                 
                 ComfyJS.onChat = (user, message, flags, isFirstMessage, badges) => {
-                    // Log completo con TODOS los parámetros
-                    console.log(`[ComfyJS] ${user}: ${message}`, {
-                        flags: flags,
-                        badges: badges,
-                        isFirstMessage: isFirstMessage,
-                        moderator: badges?.moderator,
-                        broadcaster: flags?.broadcaster
-                    });
+                    // Log EXTREMADAMENTE detallado para debugging
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log(`User: "${user}"`);
+                    console.log(`Message: "${message}"`);
+                    console.log(`Flags:`, flags);
+                    console.log(`Badges:`, badges);
+                    console.log(`Is Moderator (badges.moderator):`, badges?.moderator);
+                    console.log(`Is Broadcaster (flags.broadcaster):`, flags?.broadcaster);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                     
                     // Procesar comando
                     procesarComandoOBS(user, message, flags, badges);
