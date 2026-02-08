@@ -98,12 +98,10 @@
             padding: 0 5px;
         }
 
-        .skull-icon {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 15px;
+        .skull-emoji {
+            font-size: 60px;
+            margin-bottom: 5px;
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-            object-fit: contain;
         }
 
         .total-number {
@@ -118,7 +116,7 @@
             border: 2px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 2px 8px rgb(255 0 0 / 50%);
             padding: 0 5px;
-            margin-top: -20px;
+            margin-top: 0px;
         }
 
         .status-indicator {
@@ -199,7 +197,7 @@
             const totalItem = document.createElement('div');
             totalItem.className = 'total-counter';
             totalItem.innerHTML = `
-                <img src="./logos/Calavera.png" alt="Skull" class="skull-icon" onerror="this.style.display='none'">
+                <div class="skull-emoji">☠️</div>
                 <div class="total-number">${state.totalMatches}</div>
             `;
             container.appendChild(totalItem);
