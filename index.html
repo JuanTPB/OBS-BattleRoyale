@@ -416,16 +416,16 @@
             try {
                 console.log('🚀 Conectando a Twitch Chat (ComfyJS)...');
                 
-                // Escuchar múltiples canales
-                const channels = ['renrize', 'juantpb_rize'];
-                console.log(`📡 Escuchando canales: ${channels.join(', ')}`);
+                // Solo escuchar el canal de juantpb_rize
+                const channel = 'juantpb_rize';
+                console.log(`📡 Escuchando SOLO el canal: #${channel}`);
                 
-                ComfyJS.Init('renrize', null, channels);
+                ComfyJS.Init('renrize', null, [channel]);
                 
-                ComfyJS.onChat = (user, message, flags, isFirstMessage, badges, channel) => {
+                ComfyJS.onChat = (user, message, flags, isFirstMessage, badges, channelName) => {
                     // Log EXTREMADAMENTE detallado para debugging
                     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log(`Channel: #${channel || 'desconocido'}`);
+                    console.log(`Channel: #${channelName || channel}`);
                     console.log(`User: "${user}"`);
                     console.log(`Message: "${message}"`);
                     console.log(`Flags:`, flags);
@@ -439,7 +439,7 @@
                 };
 
                 ComfyJS.onConnected = (user) => {
-                    console.log('✅ ComfyJS conectado');
+                    console.log('✅ ComfyJS conectado al canal: #' + channel);
                     state.connected = true;
                 };
                 
